@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Kicktipp Bot - WM 2026</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#9917;</text></svg>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KT Bot">
+    <meta name="theme-color" content="#10b981">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: {
+                dark: { 900: '#0f172a', 800: '#1e293b', 700: '#334155', 600: '#475569' },
+                accent: { DEFAULT: '#10b981', light: '#34d399', dark: '#059669' },
+            }}}
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); min-height: 100vh; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
+        .glass-light { background: rgba(51, 65, 85, 0.5); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.06); }
+        .tab-active { color: #10b981 !important; border-color: #10b981 !important; }
+        .match-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+        .match-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+        .bar-fill { transition: width 0.6s ease-out; }
+        .status-pill { font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        @media (max-width: 768px) { .desktop-nav { display: none; } .mobile-nav { display: flex !important; } main { padding-bottom: 80px; } }
+        @media (min-width: 769px) { .mobile-nav { display: none !important; } }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+    </style>
+</head>
+<body class="text-gray-200 font-sans">
+
+    <header class="glass sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">&#9917;</span>
+                <div>
+                    <h1 class="text-lg font-bold text-white leading-tight">WM 2026 Bot</h1>
+                    <p class="text-xs text-gray-400" id="last-update">Cloud Dashboard</p>
+                </div>
+            </div>
+            <div id="status-badge" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-full glass-light">
+                <span class="w-2 h-2 rounded-full bg-accent"></span>
+                <span class="text-accent font-medium" id="status-text">-</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="desktop-nav max-w-5xl mx-auto px-4 mt-4">
+        <div class="flex gap-1 glass rounded-xl p-1">
+            <button class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all tab-active" data-tab="spiele">&#9917; Spiele</button>
+            <button class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all text-gray-400" data-tab="gruppen">&#128203; Gruppen</button>
+            <button class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all text-gray-400" data-tab="prognose">&#127775; Prognose</button>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-5">
+        <!-- Spiele -->
+        <div id="tab-spiele" class="tab-content">
+            <h2 class="text-xl font-bold text-white mb-4">Alle Tipps</h2>
+            <div class="grid grid-cols-1 gap-2 mb-3">
+                <div class="flex gap-3 text-center">
+                    <div class="glass rounded-lg px-4 py-2 flex-1"><span class="text-2xl font-black text-white" id="s-total">0</span><div class="text-[10px] text-gray-400">Spiele</div></div>
+                    <div class="glass rounded-lg px-4 py-2 flex-1"><span class="text-2xl font-black text-accent" id="s-done">0</span><div class="text-[10px] text-gray-400">Getippt</div></div>
+                    <div class="glass rounded-lg px-4 py-2 flex-1"><span class="text-2xl font-black text-amber-400" id="s-open">0</span><div class="text-[10px] text-gray-400">Offen</div></div>
+                </div>
+            </div>
+            <div id="spiele-body" class="space-y-2"></div>
+        </div>
+
+        <!-- Gruppen -->
+        <div id="tab-gruppen" class="tab-content hidden">
+            <h2 class="text-xl font-bold text-white mb-4">Gruppenphase</h2>
+            <div id="gruppen-body" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+
+        <!-- Prognose -->
+        <div id="tab-prognose" class="tab-content hidden">
+            <h2 class="text-xl font-bold text-white mb-4">&#127942; WM-Prognose 2026</h2>
+            <div class="grid grid-cols-2 gap-3 mb-5">
+                <div class="glass rounded-xl p-4 text-center">
+                    <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Bot-Tipp Weltmeister</div>
+                    <div class="text-2xl font-black text-yellow-400" id="pick-wm">-</div>
+                    <div class="text-xs text-gray-400 mt-1" id="pick-wm-prob"></div>
+                </div>
+                <div class="glass rounded-xl p-4 text-center">
+                    <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Bot-Tipp Halbfinalist</div>
+                    <div class="text-2xl font-black text-blue-400" id="pick-hf">-</div>
+                    <div class="text-xs text-gray-400 mt-1" id="pick-hf-prob"></div>
+                </div>
+            </div>
+            <div class="glass rounded-xl overflow-hidden" id="outrights-table"></div>
+        </div>
+    </main>
+
+    <nav class="mobile-nav fixed bottom-0 left-0 right-0 glass z-50 px-2 py-2 justify-around" style="display:none;">
+        <button class="mob-tab flex flex-col items-center py-1 px-4 rounded-lg tab-active" data-tab="spiele"><span class="text-xl">&#9917;</span><span class="text-[10px]">Spiele</span></button>
+        <button class="mob-tab flex flex-col items-center py-1 px-4 rounded-lg text-gray-500" data-tab="gruppen"><span class="text-xl">&#128203;</span><span class="text-[10px]">Gruppen</span></button>
+        <button class="mob-tab flex flex-col items-center py-1 px-4 rounded-lg text-gray-500" data-tab="prognose"><span class="text-xl">&#127775;</span><span class="text-[10px]">Prognose</span></button>
+    </nav>
+
+<script>
+const FLAGS = {
+    'Deutschland':'&#x1F1E9;&#x1F1EA;','Brasilien':'&#x1F1E7;&#x1F1F7;','Frankreich':'&#x1F1EB;&#x1F1F7;',
+    'Argentinien':'&#x1F1E6;&#x1F1F7;','Spanien':'&#x1F1EA;&#x1F1F8;','England':'&#x1F1EC;&#x1F1E7;',
+    'Portugal':'&#x1F1F5;&#x1F1F9;','Niederlande':'&#x1F1F3;&#x1F1F1;','Belgien':'&#x1F1E7;&#x1F1EA;',
+    'Kroatien':'&#x1F1ED;&#x1F1F7;','Uruguay':'&#x1F1FA;&#x1F1FE;','Kolumbien':'&#x1F1E8;&#x1F1F4;',
+    'USA':'&#x1F1FA;&#x1F1F8;','Mexiko':'&#x1F1F2;&#x1F1FD;','Kanada':'&#x1F1E8;&#x1F1E6;',
+    'Japan':'&#x1F1EF;&#x1F1F5;','Südkorea':'&#x1F1F0;&#x1F1F7;','Australien':'&#x1F1E6;&#x1F1FA;',
+    'Marokko':'&#x1F1F2;&#x1F1E6;','Senegal':'&#x1F1F8;&#x1F1F3;','Ghana':'&#x1F1EC;&#x1F1ED;',
+    'Tunesien':'&#x1F1F9;&#x1F1F3;','Ägypten':'&#x1F1EA;&#x1F1EC;',
+    'Elfenbeinküste':'&#x1F1E8;&#x1F1EE;','DR Kongo':'&#x1F1E8;&#x1F1E9;','Algerien':'&#x1F1E9;&#x1F1FF;',
+    'Schweiz':'&#x1F1E8;&#x1F1ED;','Österreich':'&#x1F1E6;&#x1F1F9;','Schweden':'&#x1F1F8;&#x1F1EA;',
+    'Norwegen':'&#x1F1F3;&#x1F1F4;','Türkei':'&#x1F1F9;&#x1F1F7;',
+    'Schottland':'&#x1F3F4;&#xE0067;&#xE0062;&#xE0073;&#xE0063;&#xE0074;&#xE007F;',
+    'Tschechien':'&#x1F1E8;&#x1F1FF;','Ecuador':'&#x1F1EA;&#x1F1E8;','Paraguay':'&#x1F1F5;&#x1F1FE;',
+    'Iran':'&#x1F1EE;&#x1F1F7;','Saudi-Arabien':'&#x1F1F8;&#x1F1E6;','Katar':'&#x1F1F6;&#x1F1E6;',
+    'Irak':'&#x1F1EE;&#x1F1F6;','Jordanien':'&#x1F1EF;&#x1F1F4;','Usbekistan':'&#x1F1FA;&#x1F1FF;',
+    'Neuseeland':'&#x1F1F3;&#x1F1FF;','Haiti':'&#x1F1ED;&#x1F1F9;','Panama':'&#x1F1F5;&#x1F1E6;',
+    'Kap Verde':'&#x1F1E8;&#x1F1FB;','Südafrika':'&#x1F1FF;&#x1F1E6;',
+    'Curaçao':'&#x1F1E8;&#x1F1FC;','Bosnien-Herzegowina':'&#x1F1E7;&#x1F1E6;',
+};
+const FLAGS_EN = {
+    'Brazil':'\u{1F1E7}\u{1F1F7}','Argentina':'\u{1F1E6}\u{1F1F7}','France':'\u{1F1EB}\u{1F1F7}',
+    'England':'\u{1F1EC}\u{1F1E7}','Spain':'\u{1F1EA}\u{1F1F8}','Germany':'\u{1F1E9}\u{1F1EA}',
+    'Portugal':'\u{1F1F5}\u{1F1F9}','Netherlands':'\u{1F1F3}\u{1F1F1}','Belgium':'\u{1F1E7}\u{1F1EA}',
+    'Croatia':'\u{1F1ED}\u{1F1F7}','Uruguay':'\u{1F1FA}\u{1F1FE}','Colombia':'\u{1F1E8}\u{1F1F4}',
+    'USA':'\u{1F1FA}\u{1F1F8}','Mexico':'\u{1F1F2}\u{1F1FD}','Canada':'\u{1F1E8}\u{1F1E6}',
+    'Japan':'\u{1F1EF}\u{1F1F5}','South Korea':'\u{1F1F0}\u{1F1F7}','Australia':'\u{1F1E6}\u{1F1FA}',
+    'Morocco':'\u{1F1F2}\u{1F1E6}','Senegal':'\u{1F1F8}\u{1F1F3}','Ghana':'\u{1F1EC}\u{1F1ED}',
+    'Tunisia':'\u{1F1F9}\u{1F1F3}','Egypt':'\u{1F1EA}\u{1F1EC}',
+    'Ivory Coast':'\u{1F1E8}\u{1F1EE}','DR Congo':'\u{1F1E8}\u{1F1E9}','Algeria':'\u{1F1E9}\u{1F1FF}',
+    'Switzerland':'\u{1F1E8}\u{1F1ED}','Austria':'\u{1F1E6}\u{1F1F9}','Sweden':'\u{1F1F8}\u{1F1EA}',
+    'Norway':'\u{1F1F3}\u{1F1F4}','Turkey':'\u{1F1F9}\u{1F1F7}',
+};
+function flag(n) { return FLAGS[n] || FLAGS_EN[n] || '\u{1F3F3}\u{FE0F}'; }
+
+// Tab switching
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn,.mob-tab').forEach(b => { b.classList.remove('tab-active'); b.classList.add(b.classList.contains('mob-tab')?'text-gray-500':'text-gray-400'); });
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.querySelectorAll(`[data-tab="${tab}"]`).forEach(b => { b.classList.add('tab-active'); b.classList.remove('text-gray-400','text-gray-500'); });
+    document.getElementById('tab-'+tab).classList.remove('hidden');
+}
+document.querySelectorAll('.tab-btn,.mob-tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+function fmtDate(iso) {
+    if (!iso) return '-';
+    const d = new Date(iso);
+    return d.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+}
+
+function statusPill(m) {
+    if (m.submitted) return '<span class="status-pill bg-accent/20 text-accent">Getippt</span>';
+    return '<span class="status-pill bg-amber-500/20 text-amber-400">Offen</span>';
+}
+
+async function loadData() {
+    try {
+        const resp = await fetch('data.json?t='+Date.now());
+        const D = await resp.json();
+
+        // Status
+        document.getElementById('s-total').textContent = D.total_matches;
+        document.getElementById('s-done').textContent = D.submitted;
+        document.getElementById('s-open').textContent = D.pending;
+        document.getElementById('last-update').textContent = 'Stand: ' + new Date(D.updated_at).toLocaleString('de-DE');
+        document.getElementById('status-text').textContent = D.submitted + '/' + D.total_matches + ' getippt';
+
+        // Spiele
+        const spiele = document.getElementById('spiele-body');
+        const sorted = [...D.matches].sort((a,b) => new Date(a.kickoff_time) - new Date(b.kickoff_time));
+        spiele.innerHTML = sorted.map(m => {
+            const pred = m.prediction;
+            const tip = m.submitted_home !== null ? `${m.submitted_home}:${m.submitted_away}` : (pred ? `${pred.home}:${pred.away}` : '-');
+            const tipColor = m.submitted ? 'text-accent font-black' : (pred ? 'text-white font-bold' : 'text-gray-500');
+            const ev = pred ? `EV ${pred.expected_value}` : '';
+            const lambda = m.analysis ? `${m.analysis.lambda_home} - ${m.analysis.lambda_away} erw. Tore` : '';
+            return `
+            <div class="match-card glass rounded-xl p-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 mb-0.5">
+                            <span class="text-base">${flag(m.home_team)}</span>
+                            <span class="text-sm font-semibold text-white truncate">${m.home_team}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-base">${flag(m.away_team)}</span>
+                            <span class="text-sm font-semibold text-white truncate">${m.away_team}</span>
+                        </div>
+                    </div>
+                    <div class="text-center px-3">
+                        <div class="text-xl ${tipColor}">${tip}</div>
+                        <div class="text-[9px] text-gray-500">${ev}</div>
+                    </div>
+                    <div class="text-right flex flex-col items-end gap-0.5">
+                        ${statusPill(m)}
+                        <div class="text-[10px] text-gray-500">${fmtDate(m.kickoff_time)}</div>
+                        <div class="text-[10px] text-gray-500">${lambda}</div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        // Gruppen
+        const groups = {};
+        D.matches.forEach(m => { if (!m.group_name) return; if (!groups[m.group_name]) groups[m.group_name]=[]; groups[m.group_name].push(m); });
+        const grpEl = document.getElementById('gruppen-body');
+        grpEl.innerHTML = Object.entries(groups).sort(([a],[b])=>a.localeCompare(b)).map(([g, ms]) => {
+            const teams = [...new Set(ms.flatMap(m=>[m.home_team,m.away_team]))];
+            return `
+            <div class="glass rounded-xl overflow-hidden">
+                <div class="px-3 py-2 border-b border-white/10 flex items-center justify-between">
+                    <h3 class="text-sm font-black text-white">Gruppe ${g}</h3>
+                    <div class="flex gap-1">${teams.map(t=>`<span class="text-base" title="${t}">${flag(t)}</span>`).join('')}</div>
+                </div>
+                ${ms.map(m => {
+                    const pred = m.prediction;
+                    const tip = m.submitted_home!==null ? `${m.submitted_home}:${m.submitted_away}` : (pred ? `${pred.home}:${pred.away}` : '-');
+                    const cls = m.submitted ? 'text-accent font-black' : 'text-white font-bold';
+                    return `
+                    <div class="px-3 py-1.5 border-b border-white/5 last:border-0 flex items-center justify-between">
+                        <div class="flex items-center gap-1 flex-1 min-w-0">
+                            <span class="text-sm">${flag(m.home_team)}</span>
+                            <span class="text-xs text-white truncate">${m.home_team}</span>
+                        </div>
+                        <span class="font-mono text-sm ${cls} w-10 text-center">${tip}</span>
+                        <div class="flex items-center gap-1 flex-1 min-w-0 justify-end">
+                            <span class="text-xs text-white truncate text-right">${m.away_team}</span>
+                            <span class="text-sm">${flag(m.away_team)}</span>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        }).join('');
+
+        // Prognose
+        if (D.outrights && D.outrights.length) {
+            const wm = D.bot_pick_weltmeister;
+            const hf = D.bot_pick_halbfinalist;
+            if (wm) { document.getElementById('pick-wm').innerHTML = flag(wm)+' '+wm; const w=D.outrights.find(t=>t.name===wm); if(w) document.getElementById('pick-wm-prob').textContent=w.probability+'%'; }
+            if (hf) { document.getElementById('pick-hf').innerHTML = flag(hf)+' '+hf; const h=D.outrights.find(t=>t.name===hf); if(h) document.getElementById('pick-hf-prob').textContent=h.probability+'%'; }
+
+            const tbl = document.getElementById('outrights-table');
+            tbl.innerHTML = D.outrights.map((t,i) => {
+                const isWM = t.name===wm, isHF = t.name===hf;
+                const hl = isWM ? 'bg-yellow-500/10 border-l-2 border-yellow-400' : isHF ? 'bg-blue-500/10 border-l-2 border-blue-400' : '';
+                const pw = Math.min(t.probability*3, 100);
+                return `
+                <div class="flex items-center px-3 py-2 border-b border-white/5 last:border-0 ${hl}">
+                    <span class="w-8 text-xs text-gray-500 font-mono">${i+1}.</span>
+                    <span class="text-base mr-2">${flag(t.name)}</span>
+                    <span class="flex-1 text-sm text-white font-medium">${t.name}</span>
+                    <div class="w-20 bg-dark-900/50 rounded-full overflow-hidden h-3 mr-3 hidden sm:block">
+                        <div class="h-full rounded-full ${isWM?'bg-yellow-400':isHF?'bg-blue-400':'bg-accent/60'}" style="width:${pw}%"></div>
+                    </div>
+                    <span class="w-14 text-right text-sm font-bold ${isWM?'text-yellow-400':isHF?'text-blue-400':'text-gray-300'}">${t.probability}%</span>
+                </div>`;
+            }).join('');
+        }
+    } catch(e) {
+        document.getElementById('status-text').textContent = 'Fehler beim Laden';
+        console.error(e);
+    }
+}
+
+loadData();
+// Refresh every 5 minutes (data.json updates only on push)
+setInterval(loadData, 300000);
+</script>
+</body>
+</html>
